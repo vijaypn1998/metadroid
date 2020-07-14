@@ -1,21 +1,23 @@
-﻿from rules import parser
-def query_generator(decoded_mql):
-    a,b=parser(decoded_mql)
-    query='''SELECT apk_id,title,creator,size
-    FROM Apk
+import rules
+def generate_query(decoded_mql):
+    a, b = rules_2.parser(decoded_mql)
+    mysql_query = '''SELECT apk_id,title,creator,size
+    FROM apk
     WHERE'''
-    space =" "
-    for i in range(len(a)-1):
-        if(i!=len(a)-2)):
-            if(b[i][0]['operator']=='in'):
-                query = query + space + b[i][0]['column'] + space + b[i][0]['operator'] + space + '(' + b[i][0]['value'] + ")" + space + a[i]a[1]
+    for i in range(len(a) - 1):
+        if (i != len(a) - 2):
+            if (b[i][0]['operator'] == 'in'):
+                mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' (' + b[i][0][
+                    'value'] + ') ' + a[i][1]
             else:
-                query = query + space + b[i+1][0]['column'] + space +b[i+1][0]['operator'] + space + b[i+1][0]['value'] + space a[i]a[1]
+                mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' ' + b[i][0][
+                    'value'] + ' ' + a[i][1]
         else:
-            query = query + space + b[i+1][0]['column'] + space +b[i+1][0]['operator'] + space + b[i+1][0]['value']      
-    i=len(a)-2
-    if(a[i][1] == 'order by'):
-        query = query + '\n' + a[i][1] + space + b[i+1][0]['column'] + space + b[i+1][0]'[value'] 
+            mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' ' + b[i][0]['value']
+
+    i = len(a) - 2
+    if (a[i][1] == 'ORDER BY'):
+         mysql_query = mysql_query + '\n' + a[i][1] + ' ' + b[i + 1][0]['column'] + ' ' + b[i + 1][0]['operator']
     else:
-        query = query + space + b[i+1][0]['column'] + space +b[i+1][0]['operator'] + space + b[i+1][0]['value']
-    return query
+        mysql_query = mysql_query + ' ' + b[i + 1][0]['column'] + ' ' + b[i + 1][0]['operator'] + ' ' + b[i + 1][0]['value']
+    return mysql_query
