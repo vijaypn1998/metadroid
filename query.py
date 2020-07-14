@@ -1,5 +1,6 @@
 ﻿from rules import parser
 import parsley
+def 
 decoded_mql='publisher in ("Google", "VMware") AND "Creation Date" < -10m AND downloads > 1000 order by "Creation Date" DESC'
 a,b=parser(decoded_mql)
 
