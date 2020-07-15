@@ -1,32 +1,30 @@
 import rules
 def generate_query(decoded_mql):
-    a, b = rules.parser(decoded_mql)
-    mysql_query = '''SELECT apk_id,title,creator,size
-    FROM apk
-    WHERE'''
-    for i in range(len(a) - 1):
-        if (i != len(a) - 2):
-            if (b[i][0]['operator'] == 'in'):
-                mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' (' + b[i][0][
-                    'value'] + ') ' + a[i][1]
-            else:
-                mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' ' + b[i][0][
-                    'value'] + ' ' + a[i][1]
+    followed_by, req_dict = rules.parser(decoded_mql)
+    mysql_query = 'SELECT apk_id,title,creator,installation_size FROM apk WHERE'
+    i = 0
+    if(len(followed_by)== 1):
+        if (req_dict[i]['operator'] == 'in'):
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] + ' (' + req_dict[i]['value'] + ') '
         else:
-            if (b[i][0]['operator'] == 'in'):
-                mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' (' + b[i][0][
-                    'value'] + ') '
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] + ' ' + req_dict[i]['value'] + ' ' 
+
+        return mysql_query
+
+    for i in range(len(followed_by) ):  
+        if (followed_by[i] != None):
+            if (req_dict[i]['operator'] == 'in'):
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] + ' (' + req_dict[i]['value'] + ') ' + followed_by[i]
             else:
-                mysql_query = mysql_query + ' ' + b[i][0]['column'] + ' ' + b[i][0]['operator'] + ' ' + b[i][0][
-                    'value'] + ' '
-    i = len(a)-2
-    if (a[i][1] == 'ORDER BY'):
-         mysql_query = mysql_query + '\n' + a[i][1] + ' ' + b[i + 1][0]['column'] + ' ' + b[i + 1][0]['operator']
-    else:
-        if (b[i+1][0]['operator'] == 'in'):
-            mysql_query = mysql_query + ' ' + b[i+1][0]['column'] + ' ' + b[i+1][0]['operator'] + ' (' + b[i+1][0][
-                'value'] + ') '
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] + ' ' + req_dict[i]['value'] + ' ' + followed_by[i]
         else:
-            mysql_query = mysql_query + ' ' + b[i+1][0]['column'] + ' ' + b[i+1][0]['operator'] + ' ' + b[i+1][0][
-                'value']
+            if (req_dict[i]['operator'] == 'in'):
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] + ' (' + req_dict[i]['value'] + ') '
+            elif (req_dict[i]['value'] !=  None):
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] + ' ' + req_dict[i]['value'] + ' '
+            else:
+                mysql_query = mysql_query + ' ' + req_dict[i]['column'] + ' ' + req_dict[i]['operator'] 
+
     return mysql_query
+
+

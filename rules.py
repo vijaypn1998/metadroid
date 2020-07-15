@@ -3,16 +3,16 @@ requests = []
 requests_dictionary = []
 def add_2(column, operator, value):
     global requests_dictionary
-    list1 = [{'column': column, 'operator': operator, 'value': value}]
+    list1 = {'column': column, 'operator': operator, 'value': value}
     requests_dictionary.append(list1)
 
+def add(oper):
 
-def add(request, oper):
     global requests
-    requests.append([request, oper])
+    requests.append(oper)
+
 def parser(decoded_mql):
     global requests,requests_dictionary
-    operators = ['in', '<', '<=', '>', '>=', 'DESC', '==']
     '''
     The rules string is the context-free grammar used for lexically
     analysing and parsing the request by the end user.
@@ -27,26 +27,29 @@ def parser(decoded_mql):
     c = ','
     op = '('
     cp = ')'
-    operator = 'in' | '<' | '>' | 'DESC' | '='
-    p='publisher'
+    operator = 'in' | '<' | '>' | 'DESC' | '=' | 'ASC'
     space = ' '
     words = words_1 space* words* | words_1
-    words_1 = letterOrDigit+
+    words_1 = "_"* letterOrDigit+ "_"* letterOrDigit*
     S = T
-    T = <T1>:a ws 'AND' ws T->adder(a,"AND")
-    T = <T1>:b ws 'OR' ws T->adder(b,"OR")
-    T = <T1>:c ws 'order by' ws <X>:d->adder(d,None),adder(c,"ORDER BY")
-    T = T1
-    T1 = <letterOrDigit+>:aa  ws operator:oo ws op <U>:bb cp ->adder_2(aa,oo,bb)
+    T = T1 ws 'AND' ws T->adder("AND")
+    T = T1 ws 'OR' ws T->adder("OR")
+    T = T1 ws 'order by' ws X->adder(None),adder("ORDER BY")
+   
+    T = T1 ws 'AND' ws T1->adder(None),adder("AND")
+    T = T1 ws 'OR' ws T1->adder(None),adder("OR")
+    T = T1->adder(None)
+    T1 = <words_1>:aa  ws operator:oo ws op <U>:bb cp ->adder_2(aa,oo,bb)
     T1 = q <words>:aa q ws operator:oo ws op <U>:bb cp -> adder_2(aa,oo,bb)
     T1 = V
     T1 = W
     U = U c ws U1 | U1
     U1 = q words q
+    U1 = words_1
     V = q <words>:aa q ws <operator>:oo ws < q{0,1} letterOrDigit+ q{0,1}>:bb ->adder_2(aa,oo,bb)
-    W = <letterOrDigit+>:aa   ws <operator>:oo  ws <q{0,1} letterOrDigit+ q{0,1}>:bb ->adder_2(aa,oo,bb)
+    W = <words_1>:aa   ws <operator>:oo  ws <q{0,1} letterOrDigit+ q{0,1}>:bb ->adder_2(aa,oo,bb)
     X = q <words>:aa q ws <operator>:oo ->adder_2(aa,oo,None)
-    X = <letterOrDigit+>:aa ws <operator>:oo->adder_2(aa,oo,None)
+    X = <words_1>:aa ws <operator>:oo->adder_2(aa,oo,None)
     """
     x = parsley.makeGrammar(rules, {'adder': add,'adder_2': add_2})
     string = x(decoded_mql).S()
