@@ -13,6 +13,8 @@ def add(oper):
 
 def parser(decoded_mql):
     global requests,requests_dictionary
+    requests=[]
+    requests_dictionary=[]
     '''
     The rules string is the context-free grammar used for lexically
     analysing and parsing the request by the end user.
