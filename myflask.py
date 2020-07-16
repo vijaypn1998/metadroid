@@ -6,6 +6,10 @@ import json
 
 with open("config.json") as f:
     conf=json.load(f)
+def generator(apk_id):
+    my_query = 'SELECT * FROM apk INNER JOIN screenshot ON apk.apk_id=screenshot.apk_id WHERE apk.apk_id = '
+    my_query = my_query + apk_id
+    return my_query
 
 app = Flask(__name__)
 @app.route("/rest/search",methods=['POST'])
@@ -53,8 +57,7 @@ def api_2():
 
         except:
             return "Invalid apk_id", 400
-     
-    
+        return jsonify({"results":myresult})    
         
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
