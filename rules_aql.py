@@ -25,7 +25,7 @@ def aql_parser(decoded_aql):
     mistake = '~' digit+
     value = value_1 followed_by value
     value = value_1
-    value_1 = operator*  letterOrDigit+
+    value_1 = operator  letterOrDigit+
     filename = filename_1 space followed_by space filename
     filename = filename_1
     filename_1 = letterOrDigit+ "." letterOrDigit+
