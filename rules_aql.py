@@ -51,7 +51,4 @@ def aql_parser(decoded_aql):
     string = x(decoded_aql).start()
     followed_by = followed_by[::-1]
     return followed_by,request_dictionary
-decoded_aql ='text="code to search~81" AND filename="*/John-Recipe/goobe/*.jpg" AND dirname="directory name" OR age="date" AND source="google drive" OR author="Jason" AND size="<10M AND >10G"'
-a,b = aql_parser(decoded_aql)
-print(a)
-print(b)
+
