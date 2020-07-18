@@ -16,11 +16,12 @@ def aql_parser(decoded_aql):
     rules = '''
     space = ' '+
     q = '"'
+    single_q = "'"
     words = words_1 space words
     words = words_1
     words_1 = words_2 "_" words_1
     words_1 = words_2
-    words_2 = "_"* letterOrDigit+ mistake{0,1}
+    words_2 = "_"* letterOrDigit+
     words_2 = operator letterOrDigit+
     mistake = '~' digit+
     value = value_1 followed_by value
@@ -42,10 +43,10 @@ def aql_parser(decoded_aql):
     query = query_1 space <followed_by>:a space query->adder(a)
     query = query_1 space <followed_by>:a space query_1->adder(None),adder(a)
     query = query_1->adder(None)
-    query_1 = q{0,1} <words>:a q{0,1}  '=' q{0,1} <words>:b q{0,1}->adder_2(a,b)
-    query_1 = q{0,1} <words>:a q{0,1} '=' q <value>:b q->adder_2(a,b)
-    query_1 = q{0,1} <words>:a q{0,1} '=' q{0,1} <filename>:b q{0,1}->adder_2(a,b)
-    query_1 = q{0,1} <words>:a q{0,1} '=' q{0,1} <file_path>:b q{0,1}->adder_2(a,b)
+    query_1 = single_q <q{0,1} words q{0,1}>:a single_q  '=' single_q <q{0,1} words q{0,1} mistake{0,1}>:b single_q ->adder_2(a,b)
+    query_1 = single_q <q{0,1} words q{0,1}>:a single_q '='single_q <q{0,1} value q{0,1}>:b single_q ->adder_2(a,b)
+    query_1 = single_q <q{0,1} words q{0,1}>:a single_q '=' single_q <q{0,1} filename q{0,1}>:b single_q ->adder_2(a,b)
+    query_1 = single_q <q{0,1} words q{0,1}>:a single_q '=' single_q <q{0,1} file_path q{0,1}>:b single_q ->adder_2(a,b)
     '''
     x = parsley.makeGrammar(rules,{'adder':add,'adder_2':add_2})
     string = x(decoded_aql).start()
