@@ -32,7 +32,6 @@ def aql_parser(decoded_aql):
     filename_1 = letterOrDigit+ "." letterOrDigit+
     filename_1 = "*"{0,1} "." letterOrDigit+
     operator = '>' | '<' | '<=' | '>='
-    followed_by = 'AND' | 'OR'
     file_path = "*"{0,1} '/' file_path_names '/' "*"{0,1} filename_1*
     file_path_names = path '/' path
     file_path_names = path
@@ -40,8 +39,8 @@ def aql_parser(decoded_aql):
     path = path_1
     path_1 = words_1
     start = query
-    query = query_1 space <followed_by>:a space query->adder(a)
-    query = query_1 space <followed_by>:a space query_1->adder(None),adder(a)
+    query = query_1 space+ <'AND'>:a space+ query->adder(a)
+    query = query_1 space+ <'AND'>:a space+ query_1->adder(None),adder(a)
     query = query_1->adder(None)
     query_1 = single_q <q{0,1} words q{0,1}>:a single_q  '=' single_q <q{0,1} words q{0,1} mistake{0,1}>:b single_q ->adder_2(a,b)
     query_1 = single_q <q{0,1} words q{0,1}>:a single_q '='single_q <q{0,1} value q{0,1}>:b single_q ->adder_2(a,b)
