@@ -117,16 +117,22 @@ def response(queries_sql,queries_aql):
     for k in queries_sql.keys():
         with engine.connect() as con:
             temp_result = con.execute(queries_sql[k])
+            column = temp_result.keys()
+            column = list(column)
             for row in temp_result:
-                result.append(row)
+                row = list(row)
+                dict1 =dict()
+                for i in range(len(column)):
+                    dict1[column[i]] = row[i]
+                result.append(dict1)
+
     for k in queries_aql.keys():
         query = queries_aql[k]
         for q in query:
             temp = url 
             temp = temp + urllib.parse.quote(q)
             temp_result = request.get(temp)
-            for row in temp_result:
-                result.append(row)
+            result.append(temp_result)
     return result
 
 
@@ -140,7 +146,7 @@ def hello():
     table_creator()
     queries_sql,queries_aql = fetcher(decoded_values)
     result = response(queries_sql,queries_aql)
-    return str(result)
+    return flask.jsonify({'results':result})
     
 if __name__ == "__main__": 
     app.run(host='0.0.0.0',debug = True)
