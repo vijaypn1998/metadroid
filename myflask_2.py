@@ -127,6 +127,7 @@ def response_mql(queries_mql):
     return 
 def response_aql(queries_aql):
     global result
+    sizes = []
     url = 'http://ambar/api/search?query='
     for k in queries_aql.keys():
         query = queries_aql[k]
@@ -150,7 +151,18 @@ def response_aql(queries_aql):
                 temp1 = url + urllib.parse.quote(query[1])
                 temp_result0 = request.get(temp0)
                 temp_result1 = request.get(temp1)
-                return
+                temp_result = dict()
+                temp_result['hits'] = []
+                for hit in temp_result0['hits']:
+                    sizes.append(hit['content']['size'])
+                total = 0
+                for hit in temp_result1['hits']:
+                    if(hit['content']['size'] in sizes):
+                        total = total + 1 
+                        temp_result['hits'].append(hit)
+                temp_result['total'] = total
+                result.append(temp_result)
+                return 
 
 
 def response(queries_mql,queries_aql):
