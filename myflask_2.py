@@ -6,6 +6,7 @@ from  query_aql import *
 from  query import *
 from sqlalchemy import *
 from threading import *
+result = []
 with open("config.json") as f:
     conf=json.load(f)
 
@@ -70,7 +71,7 @@ def DataPreprocess(request):
 
 
 def fetcher(decoded_values):
-    queries_sql = dict()
+    queries_mql = dict()
     queries_aql = dict()
     column =''
     values =''
@@ -81,9 +82,9 @@ def fetcher(decoded_values):
         elif(decoded_values[key] != None and key == 'old_search_id'):
             s ='select aql,mql from search_history where old_search_id = '
             s = s + decoded_values[key]
-            queries_sql['old query'] = s 
+            queries_mql['old query'] = s 
         if(key == 'mql' and decoded_values[key] != None):
-            queries_sql['new query'] = decoded_values[key]
+            queries_mql['new query'] = decoded_values[key]
         if(key == 'aql' and decoded_values[key] != None):
             queries_aql['new query'] = decoded_values[key]
     column = column.strip(',')
@@ -91,32 +92,30 @@ def fetcher(decoded_values):
     column = '(' + column + ')'
     values = '(' + values + ')'
     query = 'insert into search_history ' + column + ' ' +  'values ' + values
-    queries_sql['insert query'] = query
+    queries_mql['insert query'] = query
     engine = database_connector()
-    for k in queries_sql.keys():
+    for k in queries_mql.keys():
         if(k == 'insert query'):
             with engine.connect() as con:
-                con.execute(queries_sql[k])
+                con.execute(queries_mql[k])
         elif(k == 'old query'):
             with engine.connect() as con:
-                result = con.execute(queries_sql[k])
+                result = con.execute(queries_mql[k])
                 for row in result:
                     if(row[0] != None):
                         queries_aql[k] = row[0]
                     if(row[1] != None):
-                        queries_sql[k] = row[1]
-    if('insert query' in queries_sql.keys()):
-        del queries_sql['insert query']
-    return queries_sql,queries_aql
+                        queries_mql[k] = row[1]
+    if('insert query' in queries_mql.keys()):
+        del queries_mql['insert query']
+    return queries_mql,queries_aql
 
-                         
-def response(queries_sql,queries_aql):
-    result = []
-    url = 'http://ambar/api/search?query='
+def response_mql(queries_mql):
+    global result
     engine = database_connector()
-    for k in queries_sql.keys():
+    for k in queries_mql.keys():
         with engine.connect() as con:
-            temp_result = con.execute(queries_sql[k])
+            temp_result = con.execute(queries_mql[k])
             column = temp_result.keys()
             column = list(column)
             for row in temp_result:
@@ -125,14 +124,40 @@ def response(queries_sql,queries_aql):
                 for i in range(len(column)):
                     dict1[column[i]] = row[i]
                 result.append(dict1)
-
+    return 
+def response_aql(queries_aql):
+    global result
+    url = 'http://ambar/api/search?query='
     for k in queries_aql.keys():
         query = queries_aql[k]
-        for q in query:
-            temp = url 
+        if(len(query) == 1):
+            q = query[0]
+            temp = url
             temp = temp + urllib.parse.quote(q)
             temp_result = request.get(temp)
             result.append(temp_result)
+            return 
+        else:
+            if(('size' not in query[0]) or ('size' not in query[1])):
+                for q in query:
+                    temp = url
+                    temp = temp + urllib.parse.quote(q)
+                    temp_result = request.get(temp)
+                    result.append(temp_result)
+                return
+            else:
+                temp0 = url + urllib.parse.quote(query[0])
+                temp1 = url + urllib.parse.quote(query[1])
+                temp_result0 = request.get(temp0)
+                temp_result1 = request.get(temp1)
+                return
+
+
+def response(queries_mql,queries_aql):
+    global result
+    result = []
+    response_mql(queries_mql)
+    response_aql(queries_aql)
     return result
 
 
