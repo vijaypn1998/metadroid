@@ -1,5 +1,5 @@
 import parsley
-requests = []
+followed_by = []
 requests_dictionary = []
 def add_2(column, operator, value):
     global requests_dictionary
@@ -9,11 +9,11 @@ def add_2(column, operator, value):
 def add(oper):
 
     global requests
-    requests.append(oper)
+    followed_by.append(oper)
 
 def parser(decoded_mql):
-    global requests,requests_dictionary
-    requests=[]
+    global followed_by,requests_dictionary
+    followed_by=[]
     requests_dictionary=[]
     '''
     The rules string is the context-free grammar used for lexically
@@ -54,6 +54,10 @@ def parser(decoded_mql):
     X = <words_1>:aa ws <operator>:oo->adder_2(aa,oo,None)
     """
     x = parsley.makeGrammar(rules, {'adder': add,'adder_2': add_2})
-    string = x(decoded_mql).S()
-    requests = requests[::-1]
-    return requests, requests_dictionary
+    try:
+        string = x(decoded_mql).S()
+    except:
+        return None
+
+    followed_by = followed_by[::-1]
+    return followed_by, requests_dictionary

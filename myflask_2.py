@@ -6,6 +6,7 @@ from  query_aql import *
 from  query import *
 from sqlalchemy import *
 from threading import *
+
 result = []
 with open("config.json") as f:
     conf=json.load(f)
@@ -55,19 +56,26 @@ def DataPreprocess(request):
             else:
                 decoded_values[k] = None
         if(decoded_values['aql'] != None):
-            myaql_query = aql_generate_query(decoded_values['aql'])
+            try:
+                myaql_query = aql_generate_query(decoded_values['aql'])
+            except:
+                return 'bad aql query'
             decoded_values['aql'] = myaql_query
         if(decoded_values['mql'] != None):
-            mysql_query = generate_query(decoded_values['mql'])
+            try:
+                mysql_query = generate_query(decoded_values['mql'])
+            except:
+                return 'bad sql query'
             decoded_values['mql'] = mysql_query
         if(decoded_values['is_fav_search'] != None):
-            if(decoded_values['is_fav_search'] == True):
+            if(decoded_values['is_fav_search'] == 'True'):
+                print(1)
                 decoded_values['is_fav_search'] = 1
             else:
                 decoded_values['is_fav_search'] = 0
         return decoded_values
     else:
-        return "Invalid method"
+        return 'Invalid Method'
 
 
 def fetcher(decoded_values):
@@ -97,10 +105,16 @@ def fetcher(decoded_values):
     for k in queries_mql.keys():
         if(k == 'insert query'):
             with engine.connect() as con:
-                con.execute(queries_mql[k])
+                try:
+                    con.execute(queries_mql[k])
+                except:
+                    return "invalid sql syntax"
         elif(k == 'old query'):
             with engine.connect() as con:
-                result = con.execute(queries_mql[k])
+                try:
+                    result = con.execute(queries_mql[k])
+                except:
+                    return "invalid sql syntax"
                 for row in result:
                     if(row[0] != None):
                         queries_aql[k] = row[0]
@@ -124,7 +138,7 @@ def response_mql(queries_mql):
                 for i in range(len(column)):
                     dict1[column[i]] = row[i]
                 result.append(dict1)
-    return 
+    return None
 def response_aql(queries_aql):
     global result
     sizes = []
@@ -137,20 +151,23 @@ def response_aql(queries_aql):
             temp = temp + urllib.parse.quote(q)
             temp_result = request.get(temp)
             result.append(temp_result)
-            return 
+            return None
         else:
             if(('size' not in query[0]) or ('size' not in query[1])):
                 for q in query:
                     temp = url
                     temp = temp + urllib.parse.quote(q)
                     temp_result = request.get(temp)
+                    temp_result = temp_result.json()
                     result.append(temp_result)
-                return
+                return None
             else:
                 temp0 = url + urllib.parse.quote(query[0])
                 temp1 = url + urllib.parse.quote(query[1])
                 temp_result0 = request.get(temp0)
+                temp_result0 = temp_result0.json()
                 temp_result1 = request.get(temp1)
+                temp_result1 = temp_result1.json()
                 temp_result = dict()
                 temp_result['hits'] = []
                 for hit in temp_result0['hits']:
@@ -162,14 +179,18 @@ def response_aql(queries_aql):
                         temp_result['hits'].append(hit)
                 temp_result['total'] = total
                 result.append(temp_result)
-                return 
+                return None
 
 
 def response(queries_mql,queries_aql):
     global result
     result = []
-    response_mql(queries_mql)
-    response_aql(queries_aql)
+    t1 = Thread(target = response_mql,args = (queries_mql,))
+    t2 = Thread(target = response_aql,args = (queries_aql,))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
     return result
 
 
@@ -178,10 +199,18 @@ app = flask.Flask(__name__)
 def hello():
     request = flask.request
     decoded_values = DataPreprocess(request)
-    if(decoded_values == "Invalid method"):
+    if(decoded_values == 'Invalid Method' ):
+        return decoded_values,400
+    elif(decoded_values == 'bad_aql_query'):
+        return decoded_values,400
+    elif(decoded_values == 'bad_sql_query'):
         return decoded_values,400
     table_creator()
-    queries_sql,queries_aql = fetcher(decoded_values)
+    try:
+        queries_sql,queries_aql = fetcher(decoded_values)
+    except:
+        return "Invalid sql query"
+
     result = response(queries_sql,queries_aql)
     return flask.jsonify({'results':result})
     

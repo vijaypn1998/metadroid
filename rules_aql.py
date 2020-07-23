@@ -48,7 +48,10 @@ def aql_parser(decoded_aql):
     query_1 = single_q <q{0,1} words q{0,1}>:a single_q '=' single_q <q{0,1} file_path q{0,1}>:b single_q ->adder_2(a,b)
     '''
     x = parsley.makeGrammar(rules,{'adder':add,'adder_2':add_2})
-    string = x(decoded_aql).start()
+    try:
+        string = x(decoded_aql).start()
+    except:
+        return None
     followed_by = followed_by[::-1]
     return followed_by,request_dictionary
 
