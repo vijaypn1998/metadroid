@@ -24,7 +24,7 @@ def table_creator():
     engine = database_connector()
     table_query ='''SELECT count(*)
     FROM information_schema.TABLES
-    WHERE (TABLE_SCHEMA = 'database_1') AND (TABLE_NAME = 'search_historyu')'''
+    WHERE (TABLE_SCHEMA = 'database_1') AND (TABLE_NAME = 'search_history')'''
     with engine.connect() as con:
         result = con.execute(table_query)
         for row in result:
@@ -69,13 +69,13 @@ def DataPreprocess(request):
             decoded_values['mql'] = mysql_query
         if(decoded_values['is_fav_search'] != None):
             if(decoded_values['is_fav_search'] == 'True'):
-                print(1)
                 decoded_values['is_fav_search'] = 1
             else:
                 decoded_values['is_fav_search'] = 0
         return decoded_values
     else:
         return 'Invalid Method'
+    
 
 
 def fetcher(decoded_values):
@@ -84,7 +84,11 @@ def fetcher(decoded_values):
     column =''
     values =''
     for key in decoded_values.keys():
-        if(decoded_values[key] != None and (key != 'old_search_id' )):
+        if(key == 'aql' and decoded_values[key] != None):
+            column = column + key + ','
+            values = values +  "'" + decoded_values[key][0] + "'"  + ','
+            queries_aql['new query'] = decoded_values[key][0]
+        elif(decoded_values[key] != None and (key != 'old_search_id' )):
             column = column + key + ','
             values = values + "'" + str(decoded_values[key]) + "'" + ','
         elif(decoded_values[key] != None and key == 'old_search_id'):
@@ -93,28 +97,21 @@ def fetcher(decoded_values):
             queries_mql['old query'] = s 
         if(key == 'mql' and decoded_values[key] != None):
             queries_mql['new query'] = decoded_values[key]
-        if(key == 'aql' and decoded_values[key] != None):
-            queries_aql['new query'] = decoded_values[key]
     column = column.strip(',')
     values = values.strip(',')
     column = '(' + column + ')'
     values = '(' + values + ')'
     query = 'insert into search_history ' + column + ' ' +  'values ' + values
     queries_mql['insert query'] = query
-    engine = database_connector()
     for k in queries_mql.keys():
         if(k == 'insert query'):
+            engine = database_connector()
             with engine.connect() as con:
-                try:
-                    con.execute(queries_mql[k])
-                except:
-                    return "invalid sql syntax"
+                con.execute(queries_mql[k])
         elif(k == 'old query'):
+            engine = database_connector()
             with engine.connect() as con:
-                try:
-                    result = con.execute(queries_mql[k])
-                except:
-                    return "invalid sql syntax"
+                result = con.execute(queries_mql[k])
                 for row in result:
                     if(row[0] != None):
                         queries_aql[k] = row[0]
@@ -142,14 +139,16 @@ def response_mql(queries_mql):
 def response_aql(queries_aql):
     global result
     sizes = []
-    url = 'http://ambar/api/search?query='
+    url = 'http://100.26.220.250:8080/api/search?query='
     for k in queries_aql.keys():
         query = queries_aql[k]
+        print(query)
         if(len(query) == 1):
             q = query[0]
             temp = url
             temp = temp + urllib.parse.quote(q)
-            temp_result = request.get(temp)
+            print(temp)
+            temp_result = requests.get(temp)
             result.append(temp_result)
             return None
         else:
@@ -157,16 +156,16 @@ def response_aql(queries_aql):
                 for q in query:
                     temp = url
                     temp = temp + urllib.parse.quote(q)
-                    temp_result = request.get(temp)
+                    temp_result = requests.get(temp)
                     temp_result = temp_result.json()
                     result.append(temp_result)
                 return None
             else:
                 temp0 = url + urllib.parse.quote(query[0])
                 temp1 = url + urllib.parse.quote(query[1])
-                temp_result0 = request.get(temp0)
+                temp_result0 = requests.get(temp0)
                 temp_result0 = temp_result0.json()
-                temp_result1 = request.get(temp1)
+                temp_result1 = requests.get(temp1)
                 temp_result1 = temp_result1.json()
                 temp_result = dict()
                 temp_result['hits'] = []
@@ -206,13 +205,10 @@ def hello():
     elif(decoded_values == 'bad_sql_query'):
         return decoded_values,400
     table_creator()
-    try:
-        queries_sql,queries_aql = fetcher(decoded_values)
-    except:
-        return "Invalid sql query"
-
-    result = response(queries_sql,queries_aql)
-    return flask.jsonify({'results':result})
+    queries_mql,queries_aql = fetcher(decoded_values)
+    result = response(queries_mql,queries_aql)
+    return str(result)
+    return flask.jsonify({"results":result})
     
 if __name__ == "__main__": 
     app.run(host='0.0.0.0',debug = True)
