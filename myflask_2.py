@@ -59,13 +59,13 @@ def DataPreprocess(request):
             try:
                 myaql_query = aql_generate_query(decoded_values['aql'])
             except:
-                return 'bad aql query'
+                return 'bad_aql_query'
             decoded_values['aql'] = myaql_query
         if(decoded_values['mql'] != None):
             try:
                 mysql_query = generate_query(decoded_values['mql'])
             except:
-                return 'bad sql query'
+                return 'bad_sql_query'
             decoded_values['mql'] = mysql_query
         if(decoded_values['is_fav_search'] != None):
             if(decoded_values['is_fav_search'] == 'True'):
@@ -87,7 +87,7 @@ def fetcher(decoded_values):
         if(key == 'aql' and decoded_values[key] != None):
             column = column + key + ','
             values = values +  "'" + decoded_values[key][0] + "'"  + ','
-            queries_aql['new query'] = decoded_values[key][0]
+            queries_aql['new query'] = decoded_values[key]
         elif(decoded_values[key] != None and (key != 'old_search_id' )):
             column = column + key + ','
             values = values + "'" + str(decoded_values[key]) + "'" + ','
@@ -142,13 +142,12 @@ def response_aql(queries_aql):
     url = 'http://100.26.220.250:8080/api/search?query='
     for k in queries_aql.keys():
         query = queries_aql[k]
-        print(query)
         if(len(query) == 1):
             q = query[0]
             temp = url
             temp = temp + urllib.parse.quote(q)
-            print(temp)
             temp_result = requests.get(temp)
+            temp_result = temp_result.json()
             result.append(temp_result)
             return None
         else:
