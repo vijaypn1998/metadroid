@@ -2,15 +2,17 @@ import flask
 import json
 import requests
 import urllib.parse
+import base64
 from  query_aql import *
 from  query import *
 from sqlalchemy import *
 from threading import *
+from rules_aql import *
+from rules import *
 
 result = []
 with open("config.json") as f:
     conf=json.load(f)
-
 
 def database_connector():
     global conf
@@ -46,37 +48,43 @@ def table_creator():
 def DataPreprocess(request):
     if request.method == 'POST':
         keys = request.form.keys()
-        my_keys = ['old_search_id','aql','mql','search_tag','is_fav_search']
         keys_form = list(keys)
         decoded_values = {}
-        for k in my_keys:
-            if (k in keys_form):
+        for k in keys_form:
+            if(k == 'aql'):
                 decoded_value = urllib.parse.unquote_plus(request.form[k])
                 decoded_values[k] = decoded_value
+                myaql_query = aql_parser(decoded_values['aql'])
+                if(myaql_query == None):
+                    return 'bad_aql_query'
+                my_string = decoded_value
+                my_string_bytes = my_string.encode('ascii')
+                base64_bytes = base64.b64encode(my_string_bytes)
+                base64_string = base64_bytes.decode('ascii')
+                decoded_values['aql'] = base64_string 
+            elif(k == 'mql'):
+                decoded_value = urllib.parse.unquote_plus(request.form[k])
+                decoded_values[k] = decoded_value
+                mysql_query = parser(decoded_values['mql'])
+                if(mysql_query == None):
+                    return 'bad_sql_query'
+                my_string = decoded_value
+                my_string_bytes = my_string.encode('ascii')
+                base64_bytes = base64.b64encode(my_string_bytes)
+                base64_string = base64_bytes.decode('ascii')
+                decoded_values['mql'] = base64_string 
+            elif(k == 'is_fav_search'):
+                decoded_values[k] = request.form[k]
+                if(decoded_values['is_fav_search'] == 'True'):
+                    decoded_values['is_fav_search'] = 1
+                else:
+                    decoded_values['is_fav_search'] = 0
             else:
-                decoded_values[k] = None
-        if(decoded_values['aql'] != None):
-            try:
-                myaql_query = aql_generate_query(decoded_values['aql'])
-            except:
-                return 'bad_aql_query'
-            decoded_values['aql'] = myaql_query
-        if(decoded_values['mql'] != None):
-            try:
-                mysql_query = generate_query(decoded_values['mql'])
-            except:
-                return 'bad_sql_query'
-            decoded_values['mql'] = mysql_query
-        if(decoded_values['is_fav_search'] != None):
-            if(decoded_values['is_fav_search'] == 'True'):
-                decoded_values['is_fav_search'] = 1
-            else:
-                decoded_values['is_fav_search'] = 0
+                decoded_values[k] = request.form[k]
         return decoded_values
     else:
         return 'Invalid Method'
     
-
 
 def fetcher(decoded_values):
     queries_mql = dict()
@@ -84,19 +92,16 @@ def fetcher(decoded_values):
     column =''
     values =''
     for key in decoded_values.keys():
-        if(key == 'aql' and decoded_values[key] != None):
-            column = column + key + ','
-            values = values +  "'" + decoded_values[key][0] + "'"  + ','
-            queries_aql['new query'] = decoded_values[key]
-        elif(decoded_values[key] != None and (key != 'old_search_id' )):
-            column = column + key + ','
+        if(key == 'old_search_id'):
+            old_queries ='select aql,mql from search_history where old_search_id = ' + decoded_values[key]
+            queries_mql['old query'] = old_queries
+        else:
+            column = column + key +','
             values = values + "'" + str(decoded_values[key]) + "'" + ','
-        elif(decoded_values[key] != None and key == 'old_search_id'):
-            s ='select aql,mql from search_history where old_search_id = '
-            s = s + decoded_values[key]
-            queries_mql['old query'] = s 
-        if(key == 'mql' and decoded_values[key] != None):
+        if(key == 'mql'):
             queries_mql['new query'] = decoded_values[key]
+        if(key == 'aql'):
+            queries_aql['new query'] = decoded_values[key]
     column = column.strip(',')
     values = values.strip(',')
     column = '(' + column + ')'
@@ -125,8 +130,13 @@ def response_mql(queries_mql):
     global result
     engine = database_connector()
     for k in queries_mql.keys():
+        base64_string = queries_mql[k]
+        base64_bytes = base64_string.encode('ascii')
+        my_string_bytes = base64.b64decode(base64_bytes)
+        my_string = my_string_bytes.decode('ascii')
+        query = generate_query(my_string)
         with engine.connect() as con:
-            temp_result = con.execute(queries_mql[k])
+            temp_result = con.execute(query)
             column = temp_result.keys()
             column = list(column)
             for row in temp_result:
@@ -141,7 +151,11 @@ def response_aql(queries_aql):
     sizes = []
     url = 'http://100.26.220.250:8080/api/search?query='
     for k in queries_aql.keys():
-        query = queries_aql[k]
+        base64_string = queries_aql[k]
+        base64_bytes = base64_string.encode('ascii')
+        my_string_bytes = base64.b64decode(base64_bytes)
+        my_string = my_string_bytes.decode('ascii')
+        query = aql_generate_query(my_string)
         if(len(query) == 1):
             q = query[0]
             temp = url
@@ -149,7 +163,6 @@ def response_aql(queries_aql):
             temp_result = requests.get(temp)
             temp_result = temp_result.json()
             result.append(temp_result)
-            return None
         else:
             if(('size' not in query[0]) or ('size' not in query[1])):
                 for q in query:
@@ -158,7 +171,6 @@ def response_aql(queries_aql):
                     temp_result = requests.get(temp)
                     temp_result = temp_result.json()
                     result.append(temp_result)
-                return None
             else:
                 temp0 = url + urllib.parse.quote(query[0])
                 temp1 = url + urllib.parse.quote(query[1])
@@ -177,7 +189,7 @@ def response_aql(queries_aql):
                         temp_result['hits'].append(hit)
                 temp_result['total'] = total
                 result.append(temp_result)
-                return None
+    return None
 
 
 def response(queries_mql,queries_aql):
@@ -206,7 +218,6 @@ def hello():
     table_creator()
     queries_mql,queries_aql = fetcher(decoded_values)
     result = response(queries_mql,queries_aql)
-    return str(result)
     return flask.jsonify({"results":result})
     
 if __name__ == "__main__": 
